@@ -19,3 +19,4 @@ export * from "./update-member-invite";
 export * from "./delete-member-invite";
 export * from "./send-invitation-email";
 export * from "./create-seller-shipping-profile";
+export * from "./create-default-seller-location";

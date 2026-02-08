@@ -13,6 +13,7 @@ import {
   createSellerOnboardingStep,
   createSellerStep,
   createSellerShippingProfileStep,
+  createDefaultSellerLocationStep,
 } from "../steps";
 
 type CreateSellerWorkflowInput = {
@@ -44,6 +45,7 @@ export const createSellerWorkflow = createWorkflow(
     });
 
     createSellerShippingProfileStep(seller);
+    createDefaultSellerLocationStep(seller);
     const sellerCreatedHook = createHook("sellerCreated", {
       sellerId: seller.id,
     });
