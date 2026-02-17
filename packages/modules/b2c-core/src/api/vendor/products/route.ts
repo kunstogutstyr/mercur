@@ -169,7 +169,7 @@ export const POST = async (
   const mergedImages = mergeVariantImages(validatedBody.images, variants_images)
 
   const salesChannels =
-    validatedBody.sales_channels?.length > 0
+    (validatedBody.sales_channels?.length ?? 0) > 0
       ? validatedBody.sales_channels
       : req.marketplaceContext?.sales_channel_id
         ? [{ id: req.marketplaceContext.sales_channel_id }]
