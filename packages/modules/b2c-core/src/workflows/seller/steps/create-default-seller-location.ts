@@ -16,10 +16,15 @@ import sellerShippingProfile from "../../../links/seller-shipping-profile";
 const DEFAULT_SHIPPING_COUNTRIES = ["no"];
 const DEFAULT_FULFILLMENT_PROVIDER = "manual_manual";
 
+/** Env for multi-marketplace: hvilken sales channel og region som gjelder for «default» markedsplass. */
+const DEFAULT_SALES_CHANNEL_ID = process.env.DEFAULT_SALES_CHANNEL_ID?.trim();
+const DEFAULT_REGION_ID = process.env.DEFAULT_REGION_ID?.trim();
+
 /**
  * Oppretter standard lokasjon, fulfillment set, service zone og fraktalternativ
  * for en ny vendor ved onboarding, slik at sluttbrukeren ikke må sette opp
- * tekniske innstillinger manuelt.
+ * tekniske innstillinger manuelt. Bruker DEFAULT_SALES_CHANNEL_ID og
+ * DEFAULT_REGION_ID fra env når satt (multi-marketplace).
  */
 export const createDefaultSellerLocationStep = createStep(
   "create-default-seller-location",
@@ -32,9 +37,16 @@ export const createDefaultSellerLocationStep = createStep(
     const eventBus = container.resolve(Modules.EVENT_BUS);
 
     const regionService = container.resolve(Modules.REGION);
-    const [region] = await regionService.listRegions();
+    const regions = await regionService.listRegions();
+    const region = DEFAULT_REGION_ID
+      ? regions.find((r) => r.id === DEFAULT_REGION_ID) ?? regions[0]
+      : regions[0];
+
     const salesChannelService = container.resolve(Modules.SALES_CHANNEL);
-    const [salesChannel] = await salesChannelService.listSalesChannels();
+    const salesChannels = await salesChannelService.listSalesChannels();
+    const salesChannel = DEFAULT_SALES_CHANNEL_ID
+      ? salesChannels.find((sc) => sc.id === DEFAULT_SALES_CHANNEL_ID) ?? salesChannels[0]
+      : salesChannels[0];
 
     if (!region || !salesChannel) {
       return;

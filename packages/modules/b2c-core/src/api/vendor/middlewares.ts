@@ -2,6 +2,7 @@ import { MiddlewareRoute, authenticate } from "@medusajs/framework";
 
 import {
   checkSellerApproved,
+  marketplaceContext,
   storeActiveGuard,
 } from "../../shared/infra/http/middlewares";
 import { unlessBaseUrl } from "../../shared/infra/http/utils";
@@ -71,6 +72,7 @@ export const vendorMiddlewares: MiddlewareRoute[] = [
   {
     matcher: "/vendor/*",
     middlewares: [
+      marketplaceContext(),
       unlessBaseUrl(
         /^\/vendor\/(sellers|invites\/accept)$/,
         checkSellerApproved(["bearer", "session"])

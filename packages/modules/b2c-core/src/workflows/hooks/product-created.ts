@@ -1,13 +1,14 @@
 import { MedusaContainer } from "@medusajs/framework";
 import { LinkDefinition, ProductDTO } from "@medusajs/framework/types";
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils";
-import { createProductsWorkflow } from "@medusajs/medusa/core-flows";
+import { createInventoryLevelsWorkflow, createProductsWorkflow } from "@medusajs/medusa/core-flows";
 import { StepResponse, WorkflowData } from "@medusajs/workflows-sdk";
 
-import { AlgoliaEvents } from "@mercurjs/framework";
+import { AlgoliaEvents, IntermediateEvents } from "@mercurjs/framework";
 import { SELLER_MODULE } from "../../modules/seller";
 
 import sellerShippingProfile from "../../links/seller-shipping-profile";
+import sellerStockLocation from "../../links/seller-stock-location";
 import { productsCreatedHookHandler } from "../attribute/utils";
 import { SECONDARY_CATEGORY_MODULE } from "../../modules/secondary_categories";
 import SecondaryCategoryModuleService from "../../modules/secondary_categories/service";
@@ -27,8 +28,45 @@ const getVariantInventoryItemIds = async (
   });
 
   return items.data
-    .map((item) => item.inventory_items.map((ii) => ii.inventory_item_id))
-    .flat(2);
+    .map((item) => item.inventory_items?.map((ii) => ii.inventory_item_id) ?? [])
+    .flat();
+};
+
+/**
+ * Henter seller sin default stock location. Ved sales_channel_id foretrekkes
+ * en lokasjon som er koblet til den sales channel (multi-marketplace).
+ */
+const getDefaultStockLocationIdForSeller = async (
+  container: MedusaContainer,
+  sellerId: string,
+  salesChannelId?: string
+): Promise<string | null> => {
+  const query = container.resolve(ContainerRegistrationKeys.QUERY);
+
+  const { data: sellerLocations } = await query.graph({
+    entity: sellerStockLocation.entryPoint,
+    fields: ["stock_location_id"],
+    filters: { seller_id: sellerId },
+  });
+
+  const locationIds = sellerLocations?.map((r: { stock_location_id: string }) => r.stock_location_id) ?? [];
+  if (locationIds.length === 0) return null;
+
+  if (salesChannelId) {
+    const { data: locationsWithChannel } = await query.graph({
+      entity: "stock_location",
+      fields: ["id", "sales_channels.id"],
+      filters: { id: locationIds },
+    });
+
+    const match = locationsWithChannel?.find(
+      (loc: { sales_channels?: { id: string }[] }) =>
+        loc.sales_channels?.some((sc) => sc.id === salesChannelId)
+    );
+    if (match) return match.id;
+  }
+
+  return locationIds[0];
 };
 
 const assignDefaultSellerShippingProfile = async (
@@ -161,6 +199,7 @@ createProductsWorkflow.hooks.productsCreated(
       products: WorkflowData<ProductDTO[]>;
       additional_data: {
         seller_id: string | null;
+        sales_channel_id?: string;
         secondary_categories: {
           handle: string;
           secondary_categories_ids: string[];
@@ -194,6 +233,7 @@ createProductsWorkflow.hooks.productsCreated(
       };
     });
 
+    const allInventoryItemIds: string[] = [];
     for (const variant of variants) {
       if (variant.manage_inventory) {
         const inventoryItemIds = await getVariantInventoryItemIds(
@@ -202,6 +242,7 @@ createProductsWorkflow.hooks.productsCreated(
         );
 
         inventoryItemIds.forEach((inventory_item_id) => {
+          allInventoryItemIds.push(inventory_item_id);
           remoteLinks.push({
             [SELLER_MODULE]: {
               seller_id: additional_data.seller_id,
@@ -231,6 +272,34 @@ createProductsWorkflow.hooks.productsCreated(
     );
 
     await remoteLink.create([...remoteLinks, ...secondaryCategories]);
+
+    const defaultLocationId = await getDefaultStockLocationIdForSeller(
+      container,
+      additional_data.seller_id,
+      additional_data.sales_channel_id
+    );
+
+    if (defaultLocationId && allInventoryItemIds.length > 0) {
+      const uniqueInventoryItemIds = [...new Set(allInventoryItemIds)];
+      const { result } = await createInventoryLevelsWorkflow(container).run({
+        input: {
+          inventory_levels: uniqueInventoryItemIds.map((inventory_item_id) => ({
+            inventory_item_id,
+            location_id: defaultLocationId,
+            stocked_quantity: 1,
+            reserved_quantity: 0,
+          })),
+        },
+      });
+
+      const eventBus = container.resolve(Modules.EVENT_BUS);
+      for (const inventoryItemId of uniqueInventoryItemIds) {
+        await eventBus.emit({
+          name: IntermediateEvents.INVENTORY_ITEM_CHANGED,
+          data: { id: inventoryItemId },
+        });
+      }
+    }
 
     await container.resolve(Modules.EVENT_BUS).emit({
       name: AlgoliaEvents.PRODUCTS_CHANGED,

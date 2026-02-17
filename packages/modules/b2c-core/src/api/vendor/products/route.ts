@@ -168,19 +168,31 @@ export const POST = async (
 
   const mergedImages = mergeVariantImages(validatedBody.images, variants_images)
 
+  const salesChannels =
+    validatedBody.sales_channels?.length > 0
+      ? validatedBody.sales_channels
+      : req.marketplaceContext?.sales_channel_id
+        ? [{ id: req.marketplaceContext.sales_channel_id }]
+        : undefined
+
+  const productInput = {
+    ...validatedBody,
+    images: mergedImages.length ? mergedImages : undefined,
+    status: validatedBody.status === 'draft' ? 'draft' : 'proposed' as const,
+    ...(salesChannels && { sales_channels: salesChannels })
+  }
+
   const {
     result: [createdProduct]
   } = await createProductsWorkflow.run({
     container: req.scope,
     input: {
-      products: [
-        {
-          ...validatedBody,
-          images: mergedImages.length ? mergedImages : undefined,
-          status: validatedBody.status === 'draft' ? 'draft' : 'proposed'
-        }
-      ],
-      additional_data: { ...additional_data, seller_id: seller.id }
+      products: [productInput],
+      additional_data: {
+        ...additional_data,
+        seller_id: seller.id,
+        sales_channel_id: req.marketplaceContext?.sales_channel_id
+      }
     }
   })
 
