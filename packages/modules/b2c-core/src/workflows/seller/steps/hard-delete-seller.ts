@@ -4,7 +4,7 @@ import {
 } from "@medusajs/framework/utils";
 import { StepResponse, createStep } from "@medusajs/framework/workflows-sdk";
 
-import { PAYOUT_MODULE } from "../../../modules/payout";
+import { PAYOUT_MODULE, PayoutModuleService } from "../../../modules/payout";
 import { SELLER_MODULE, SellerModuleService } from "../../../modules/seller";
 import sellerPayoutAccountLink from "../../../links/seller-payout-account";
 
@@ -14,7 +14,7 @@ export const hardDeleteSellerStep = createStep(
     const query = container.resolve(ContainerRegistrationKeys.QUERY);
     const link = container.resolve(ContainerRegistrationKeys.LINK);
     const sellerService = container.resolve<SellerModuleService>(SELLER_MODULE);
-    const payoutService = container.resolve(PAYOUT_MODULE);
+    const payoutService = container.resolve<PayoutModuleService>(PAYOUT_MODULE);
 
     const {
       data: [seller],
