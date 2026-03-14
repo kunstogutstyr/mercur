@@ -58,6 +58,29 @@ export const sellerMiddlewares: MiddlewareRoute[] = [
     ]
   },
   {
+    method: ['DELETE'],
+    matcher: '/admin/sellers/:id',
+    middlewares: [
+      unlessPath(
+        /.*\/sellers\/invite/,
+        validateAndTransformQuery(
+          AdminSellerParams,
+          adminSellerQueryConfig.retrieve
+        )
+      )
+    ]
+  },
+  {
+    method: ['DELETE'],
+    matcher: '/admin/sellers/:id/permanent',
+    middlewares: [
+      validateAndTransformQuery(
+        AdminSellerParams,
+        adminSellerQueryConfig.retrieve
+      )
+    ]
+  },
+  {
     method: ['GET'],
     matcher: '/admin/sellers/:id/products',
     middlewares: [

@@ -1,7 +1,10 @@
 import { AuthenticatedMedusaRequest, MedusaResponse } from '@medusajs/framework'
 import { ContainerRegistrationKeys } from '@medusajs/framework/utils'
 
-import { updateSellerWorkflow } from '../../../../workflows/seller/workflows'
+import {
+  deleteSellerWorkflow,
+  updateSellerWorkflow
+} from '../../../../workflows/seller/workflows'
 import { AdminUpdateSellerType } from '../validators'
 
 /**
@@ -181,4 +184,35 @@ export const POST = async (
   })
 
   res.json({ seller })
+}
+
+/**
+ * @oas [delete] /admin/sellers/{id}
+ * operationId: "AdminDeleteSeller"
+ * summary: "Delete Seller (soft)"
+ * description: "Soft deletes a seller. The seller is hidden from lists but data is preserved."
+ * x-authenticated: true
+ * parameters:
+ *   - name: id
+ *     in: path
+ *     required: true
+ *     schema:
+ *       type: string
+ * responses:
+ *   "204":
+ *     description: No Content
+ * tags:
+ *   - Admin Sellers
+ * security:
+ *   - api_token: []
+ *   - cookie_auth: []
+ */
+export const DELETE = async (
+  req: AuthenticatedMedusaRequest,
+  res: MedusaResponse
+) => {
+  await deleteSellerWorkflow(req.scope).run({
+    input: req.params.id
+  })
+  res.status(204).send()
 }

@@ -8,6 +8,8 @@ export type AdminSellerParamsType = z.infer<typeof AdminSellerParams>;
 export const AdminSellerParams = createFindParams({
   offset: 0,
   limit: 50,
+}).extend({
+  deleted: z.enum(['true', 'false']).optional(),
 });
 
 export type AdminGetSellerProductsParamsType = z.infer<

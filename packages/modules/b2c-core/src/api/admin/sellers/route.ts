@@ -58,10 +58,13 @@ export async function GET(
   res: MedusaResponse
 ): Promise<void> {
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
+  const showDeleted = req.validatedQuery?.deleted === 'true'
 
   const { data: sellers, metadata } = await query.graph({
     entity: 'seller',
     fields: req.queryConfig.fields,
+    filters: showDeleted ? { deleted_at: { $ne: null } } : undefined,
+    withDeleted: showDeleted,
     pagination: req.queryConfig.pagination
   })
 
