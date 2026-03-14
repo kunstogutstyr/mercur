@@ -105,7 +105,7 @@ export class PayoutProvider implements IPayoutProvider {
 
       const account = await this.client_.accounts.create({
         country: country as string,
-        type: "standard",
+        type: "express",
         metadata: {
           account_id,
         },
