@@ -4,7 +4,7 @@ import {
 } from "@medusajs/framework";
 import { Modules } from "@medusajs/framework/utils";
 
-import type { AdminDeleteAuthIdentityByEmailBodyType } from "../../validators";
+import type { AdminDeleteAuthIdentityByEmailBodyType } from "../validators";
 
 /**
  * One-off admin endpoint: Delete auth identity by email so the email can be used again for registration.
