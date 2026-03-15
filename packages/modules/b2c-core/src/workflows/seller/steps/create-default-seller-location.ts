@@ -30,7 +30,6 @@ export const createDefaultSellerLocationStep = createStep(
   "create-default-seller-location",
   async (seller: SellerDTO, { container }) => {
     const sellerId = seller.id;
-    const sellerName = seller.name || "Vendor";
 
     const link = container.resolve(ContainerRegistrationKeys.LINK);
     const query = container.resolve(ContainerRegistrationKeys.QUERY);
@@ -58,7 +57,7 @@ export const createDefaultSellerLocationStep = createStep(
       input: {
         locations: [
           {
-            name: `Standard lager - ${sellerName}`,
+            name: `Standard lager - ${sellerId}`,
             address: {
               address_1: "Oppdater adresse i Innstillinger",
               city: "",
@@ -92,7 +91,7 @@ export const createDefaultSellerLocationStep = createStep(
         location_id: stockLocation.id,
         seller_id: sellerId,
         fulfillment_set_data: {
-          name: `Standard frakt - ${sellerName}`,
+          name: `Standard frakt - ${sellerId}`,
           type: "shipping",
         },
       },
