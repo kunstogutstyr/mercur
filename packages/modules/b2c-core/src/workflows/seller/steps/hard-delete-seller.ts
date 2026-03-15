@@ -1,6 +1,7 @@
 import {
   ContainerRegistrationKeys,
   MedusaError,
+  Modules,
 } from "@medusajs/framework/utils";
 import { StepResponse, createStep } from "@medusajs/framework/workflows-sdk";
 
@@ -34,6 +35,30 @@ export const hardDeleteSellerStep = createStep(
         MedusaError.Types.INVALID_DATA,
         "Seller must be soft-deleted before permanent deletion"
       );
+    }
+
+    // Get members for this seller before any deletion (members are cascade-deleted with seller)
+    const members = await sellerService.listMembers({ seller_id: id });
+    const memberIds = members.map((m) => m.id);
+
+    // Delete auth identities linked to these members so the email can be re-used for registration
+    if (memberIds.length > 0) {
+      const authModuleService = container.resolve(Modules.AUTH) as {
+        listAuthIdentities: (filters: object, config?: { take?: number }) => Promise<Array<{ id: string; app_metadata?: Record<string, unknown> }>>;
+        deleteAuthIdentities: (ids: string[]) => Promise<void>;
+      };
+      const authIdentities = await authModuleService.listAuthIdentities(
+        {},
+        { take: 500 }
+      );
+      const toDelete = authIdentities.filter((auth) => {
+        const meta = auth.app_metadata as Record<string, unknown> | undefined;
+        const value = meta?.value ?? meta?.actor_id;
+        return typeof value === "string" && memberIds.includes(value);
+      });
+      if (toDelete.length > 0) {
+        await authModuleService.deleteAuthIdentities(toDelete.map((a) => a.id));
+      }
     }
 
     // Restore temporarily so link.dismiss() can resolve the seller (Link excludes soft-deleted)
