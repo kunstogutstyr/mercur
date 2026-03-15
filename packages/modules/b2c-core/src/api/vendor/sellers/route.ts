@@ -69,6 +69,7 @@ export const POST = async (
     filters: {
       submitter_id: identity.id,
       type: "seller",
+      status: { $in: ["draft", "pending"] },
     },
   });
 
