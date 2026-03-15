@@ -36,6 +36,9 @@ export const hardDeleteSellerStep = createStep(
       );
     }
 
+    // Restore temporarily so link.dismiss() can resolve the seller (Link excludes soft-deleted)
+    await sellerService.restoreSellers(id);
+
     const {
       data: [payoutLink],
     } = await query.graph({
