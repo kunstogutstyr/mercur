@@ -13,5 +13,13 @@ export const createSellerOnboardingStep = createStep(
     });
 
     return new StepResponse(onboarding, onboarding.id);
+  },
+  async (onboardingId: string, { container }) => {
+    if (!onboardingId) {
+      return;
+    }
+
+    const service = container.resolve<SellerModuleService>(SELLER_MODULE);
+    await service.deleteSellerOnboardings([onboardingId]);
   }
 );

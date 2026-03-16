@@ -121,7 +121,7 @@ export const createDefaultSellerLocationStep = createStep(
         data: [
           {
             fulfillment_set_id: fulfillmentSetId,
-            name: "Standard leveringssone",
+            name: `Standard leveringssone - ${sellerId}`,
             geo_zones: DEFAULT_SHIPPING_COUNTRIES.map((country_code) => ({
               type: "country" as const,
               country_code,
@@ -167,7 +167,7 @@ export const createDefaultSellerLocationStep = createStep(
     } = await createShippingOptionsWorkflow(container).run({
       input: [
         {
-          name: "Standard frakt",
+          name: `Standard frakt - ${sellerId}`,
           shipping_profile_id: shippingProfileLink.shipping_profile_id,
           service_zone_id: serviceZone.id,
           provider_id: DEFAULT_FULFILLMENT_PROVIDER,
