@@ -2,13 +2,13 @@ import {
   AuthenticatedMedusaRequest,
   MedusaResponse,
 } from "@medusajs/framework";
-import { Modules } from "@medusajs/framework/utils";
 
+import { deleteAuthIdentitiesByEmails } from "../../../../lib/delete-seller-auth-identities";
 import type { AdminDeleteAuthIdentityByEmailBodyType } from "../validators";
 
 /**
  * One-off admin endpoint: Delete auth identity by email so the email can be used again for registration.
- * Use after a seller was hard-deleted before the hard-delete step was updated to remove auth identities.
+ * Use for legacy rows or manual cleanup; hard delete now removes auth via the same paginated logic.
  *
  * @oas [post] /admin/auth/delete-identity-by-email
  * operationId: "AdminDeleteAuthIdentityByEmail"
@@ -43,38 +43,7 @@ export async function POST(
 ): Promise<void> {
   const { email } = req.validatedBody;
 
-  const authModuleService = req.scope.resolve(Modules.AUTH) as {
-    listAuthIdentities: (
-      filters: object,
-      config?: { take?: number; relations?: string[] }
-    ) => Promise<
-      Array<{
-        id: string;
-        provider_identities?: Array<{
-          provider: string;
-          entity_id: string;
-        }>;
-      }>
-    >;
-    deleteAuthIdentities: (ids: string[]) => Promise<void>;
-  };
-
-  const authIdentities = await authModuleService.listAuthIdentities(
-    {},
-    { take: 500, relations: ["provider_identities"] }
-  );
-
-  const toDelete = authIdentities.filter((auth) =>
-    (auth.provider_identities ?? []).some(
-      (p) =>
-        p.provider === "emailpass" &&
-        p.entity_id?.toLowerCase() === email.toLowerCase()
-    )
-  );
-
-  if (toDelete.length > 0) {
-    await authModuleService.deleteAuthIdentities(toDelete.map((a) => a.id));
-  }
+  await deleteAuthIdentitiesByEmails(req.scope, [email]);
 
   res.status(204).send();
 }

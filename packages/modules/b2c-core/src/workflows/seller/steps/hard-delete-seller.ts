@@ -1,10 +1,10 @@
 import {
   ContainerRegistrationKeys,
   MedusaError,
-  Modules,
 } from "@medusajs/framework/utils";
 import { StepResponse, createStep } from "@medusajs/framework/workflows-sdk";
 
+import { deleteAuthIdentitiesForSellerEmailsAndMembers } from "../../../lib/delete-seller-auth-identities";
 import { PAYOUT_MODULE, PayoutModuleService } from "../../../modules/payout";
 import { SELLER_MODULE, SellerModuleService } from "../../../modules/seller";
 import sellerPayoutAccountLink from "../../../links/seller-payout-account";
@@ -21,7 +21,7 @@ export const hardDeleteSellerStep = createStep(
       data: [seller],
     } = await query.graph({
       entity: "seller",
-      fields: ["id", "deleted_at"],
+      fields: ["id", "deleted_at", "email"],
       filters: { id },
       withDeleted: true,
     });
@@ -40,26 +40,12 @@ export const hardDeleteSellerStep = createStep(
     // Get members for this seller before any deletion (members are cascade-deleted with seller)
     const members = await sellerService.listMembers({ seller_id: id });
     const memberIds = members.map((m) => m.id);
+    const memberEmails = members.map((m) => m.email);
 
-    // Delete auth identities linked to these members so the email can be re-used for registration
-    if (memberIds.length > 0) {
-      const authModuleService = container.resolve(Modules.AUTH) as {
-        listAuthIdentities: (filters: object, config?: { take?: number }) => Promise<Array<{ id: string; app_metadata?: Record<string, unknown> }>>;
-        deleteAuthIdentities: (ids: string[]) => Promise<void>;
-      };
-      const authIdentities = await authModuleService.listAuthIdentities(
-        {},
-        { take: 500 }
-      );
-      const toDelete = authIdentities.filter((auth) => {
-        const meta = auth.app_metadata as Record<string, unknown> | undefined;
-        const value = meta?.value ?? meta?.actor_id;
-        return typeof value === "string" && memberIds.includes(value);
-      });
-      if (toDelete.length > 0) {
-        await authModuleService.deleteAuthIdentities(toDelete.map((a) => a.id));
-      }
-    }
+    await deleteAuthIdentitiesForSellerEmailsAndMembers(container, {
+      memberIds,
+      emails: [seller.email, ...memberEmails],
+    });
 
     // Restore temporarily so link.dismiss() can resolve the seller (Link excludes soft-deleted)
     await sellerService.restoreSellers(id);
